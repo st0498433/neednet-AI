@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#f6f8fc">
+  <title>NeedNet AI | Hospital Supply Network</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- CSS remains in its separate file -->
+  <link rel="stylesheet" href="style.css">
+
+  <!-- Supabase library -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+
+<body>
+<div class="app">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-icon">✚</div>
+      <div>
+        <h2>NeedNet <span>AI</span></h2>
+        <small>Hospital Supply Network</small>
+      </div>
+    </div>
+
+    <div class="menu-label">WORKSPACE</div>
+
+    <nav>
+      <a href="#dashboard" class="nav-item active">▦ &nbsp; Dashboard</a>
+      <a href="#inventory" class="nav-item">▤ &nbsp; Inventory</a>
+      <a href="#requests" class="nav-item">↗ &nbsp; Supply Requests</a>
+      <a href="#network" class="nav-item">⌘ &nbsp; Hospital Network</a>
+      <a href="#recovery" class="nav-item">✧ &nbsp; AI Recovery Planner</a>
+    </nav>
+
+    <div class="sidebar-bottom">
+      <span class="status-dot"></span>
+      <div>
+        <strong>Network Operational</strong>
+        <small>Hospital coordination demo</small>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="main" id="dashboard">
+
+    <header class="topbar">
+      <div>
+        <div class="eyebrow">HOSPITAL NETWORK / OVERVIEW</div>
+        <h1>Network Dashboard</h1>
+        <p class="subheading">Coordinate essential medical supplies between hospitals.</p>
+      </div>
+
+      <div class="profile">
+        <div class="avatar">NN</div>
+        <div>
+          <strong>Network Coordinator</strong>
+          <small>Demo Workspace</small>
+        </div>
+      </div>
+    </header>
+
+    <!-- WELCOME BANNER -->
+    <section class="welcome">
+      <div>
+        <span class="welcome-tag">✦ SMART HOSPITAL COORDINATION</span>
+        <h2>Every supply.<br>Every hospital.<br>Connected.</h2>
+        <p>
+          NeedNet AI helps hospitals identify potential supply matches
+          and coordinate essential medical resources when shortages occur.
+        </p>
+        <a href="#requests" class="primary-btn">Manage Supply Requests &nbsp; →</a>
+      </div>
+
+      <div class="welcome-art" aria-hidden="true">
+        <div class="orbit orbit-one"></div>
+        <div class="orbit orbit-two"></div>
+        <div class="hospital-icon">✚</div>
+        <div class="floating-icon one">＋</div>
+        <div class="floating-icon two">♥</div>
+        <div class="floating-icon three">⌘</div>
+      </div>
+    </section>
+
+    <!-- STATISTICS -->
+    <section class="stats">
+      <article class="stat-card">
+        <div class="stat-top">
+          <span>Connected Hospitals</span>
+          <span class="stat-icon blue">✚</span>
+        </div>
+        <h2 id="hospitalCount">—</h2>
+        <p>Hospitals in the database</p>
+      </article>
+
+      <article class="stat-card">
+        <div class="stat-top">
+          <span>Supply Requests</span>
+          <span class="stat-icon orange">↗</span>
+        </div>
+        <h2 id="requestCount">—</h2>
+        <p>Saved requests</p>
+      </article>
+
+      <article class="stat-card">
+        <div class="stat-top">
+          <span>Available Surplus</span>
+          <span class="stat-icon green">▤</span>
+        </div>
+        <h2 id="surplusCount">—</h2>
+        <p>Units above recorded reserve</p>
+      </article>
+
+      <article class="stat-card">
+        <div class="stat-top">
+          <span>Transfers Confirmed</span>
+          <span class="stat-icon purple">⇄</span>
+        </div>
+        <h2 id="transferCount">0</h2>
+        <p>No transfers confirmed in this demo</p>
+      </article>
+    </section>
+
+    <!-- INVENTORY AND REQUESTS -->
+    <section class="content-grid">
+
+      <!-- INVENTORY -->
+      <article class="panel" id="inventory">
+        <div class="panel-heading">
+          <div>
+            <h3>Medical Inventory</h3>
+            <p>Recorded medical supplies across the hospital network.</p>
+          </div>
+          <span class="pill">LIVE DATA</span>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>MEDICAL ITEM</th>
+                <th>HOSPITAL</th>
+                <th>STOCK</th>
+                <th>STATUS</th>
+              </tr>
+            </thead>
+            <tbody id="inventoryBody">
+              <tr>
+                <td colspan="4">Loading inventory...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </article>
+
+      <!-- SUPPLY REQUESTS -->
+      <article class="panel" id="requests">
+        <div class="panel-heading">
+          <div>
+            <h3>Supply Requests</h3>
+            <p>Review and submit hospital supply requirements.</p>
+          </div>
+          <span class="pill green-pill">REQUESTS</span>
+        </div>
+
+        <div class="request-list" id="requestList">
+          <p>Loading supply requests...</p>
+        </div>
+
+        <button type="button" class="secondary-btn" id="showRequestForm">
+          + Create supply request
+        </button>
+
+        <form class="form-box hidden" id="requestForm">
+          <label for="hospitalInput">Requesting hospital</label>
+          <input
+            type="text"
+            id="hospitalInput"
+            placeholder="e.g. Green Valley"
+            required
+          >
+
+          <label for="itemInput">Medical item</label>
+          <input
+            type="text"
+            id="itemInput"
+            placeholder="e.g. Face masks"
+            required
+          >
+
+          <label for="quantityInput">Quantity required</label>
+          <input
+            type="number"
+            id="quantityInput"
+            min="1"
+            step="1"
+            placeholder="Enter quantity"
+            required
+          >
+
+          <button type="submit" class="primary-btn">
+            Submit Supply Request
+          </button>
+        </form>
+      </article>
+
+    </section>
+
+    <!-- HOSPITAL NETWORK -->
+    <section class="panel network-panel" id="network">
+      <div class="panel-heading">
+        <div>
+          <h3>Hospital-to-Hospital Coordination</h3>
+          <p>Identify potential donors for a hospital with an urgent supply need.</p>
+        </div>
+        <span class="pill">MATCHING</span>
+      </div>
+
+      <div class="network-cards">
+        <div class="hospital-card">
+          <div class="hospital-avatar">✚</div>
+          <div>
+            <strong>Potential Donor Hospital</strong>
+            <small>Selected from available inventory</small>
+            <span class="mini-status">Stock verification needed</span>
+          </div>
+        </div>
+
+        <div class="connection">
+          <span>⇄</span>
+          <small>Potential supply match</small>
+        </div>
+
+        <div class="hospital-card">
+          <div class="hospital-avatar recipient">✚</div>
+          <div>
+            <strong>Requesting Hospital</strong>
+            <small>Selected from saved supply requests</small>
+            <span class="mini-status needs">Supply required</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="match-summary">
+        <div>
+          <span class="match-label">NEEDNET MATCH REVIEW</span>
+          <h4>Find a potential supply match</h4>
+          <p>
+            The system checks saved requests against recorded stock at other
+            hospitals. A suggested match is not a confirmed transfer.
+          </p>
+        </div>
+
+        <button type="button" class="primary-btn" id="reviewMatch">
+          Review Matches &nbsp; →
+        </button>
+      </div>
+
+      <div id="matchResult" class="result-box hidden" aria-live="polite"></div>
+    </section>
+
+    <!-- AI RECOVERY PLANNER -->
+    <section id="recovery">
+      <div class="recovery-section">
+        <div>
+          <div class="eyebrow">RESILIENT SUPPLY CHAINS</div>
+          <h2>AI Recovery Planner</h2>
+          <p>
+            Simulate a supplier delay and review recorded stock, possible
+            shortages and potential donor hospitals. This demo provides
+            decision support; a coordinator must verify all information.
+          </p>
+        </div>
+
+        <button type="button" class="primary-btn" id="simulateBtn">
+          Run Delay Simulation &nbsp; →
+        </button>
+      </div>
+
+      <div id="recoveryResult" class="result-box result-panel hidden"
+           aria-live="polite"></div>
+    </section>
+
+    <footer>
+      NeedNet AI · Hospital-to-Hospital Supply Coordination · Hackathon Demo
+      <br>
+      All suggested matches require human verification and authorization.
+    </footer>
+
+  </main>
+</div>
+
+<!-- Keep JavaScript in its separate file -->
+<script src="script.js"></script>
+</body>
+</html>
