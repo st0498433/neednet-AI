@@ -29,18 +29,11 @@ function escapeHTML(value) {
 }
 
 function normalizeHospital(value) {
-  let name = String(value || "")
+  return String(value || "")
     .toLowerCase()
     .replace(/\bhospital\b/g, "")
     .replace(/\s+/g, " ")
     .trim();
-
-  // "green" is an alias for the Green Valley hospital.
-  if (name === "green" || name === "green valley") {
-    return "green valley";
-  }
-
-  return name;
 }
 
 function resolveHospitalName(value) {
@@ -80,6 +73,77 @@ function getSurplus(entry) {
   );
 }
 
+// Populate hospital and item dropdowns using Supabase records.
+function populateRequestDropdowns() {
+  const hospitalSelect = $("hospitalInput");
+  const itemSelect = $("itemInput");
+
+  if (hospitalSelect) {
+    const previousHospital = hospitalSelect.value;
+
+    hospitalSelect.innerHTML =
+      '<option value="">Select a registered hospital</option>';
+
+    hospitals.forEach((hospital) => {
+      const option = document.createElement("option");
+      option.value = hospital.name;
+      option.textContent = hospital.name;
+      hospitalSelect.appendChild(option);
+    });
+
+    if (hospitals.some((h) => h.name === previousHospital)) {
+      hospitalSelect.value = previousHospital;
+    }
+
+    hospitalSelect.disabled = hospitals.length === 0;
+
+    if (hospitals.length === 0) {
+      hospitalSelect.innerHTML =
+        '<option value="">No registered hospitals found</option>';
+    }
+  }
+
+  if (itemSelect) {
+    const previousItem = itemSelect.value;
+
+    // Only offer items recorded in the inventory table.
+    // Keep one canonical database item for each normalized item.
+    const uniqueItems = new Map();
+
+    inventory.forEach((entry) => {
+      const item = String(entry.item || "").trim();
+      if (!item) return;
+
+      const key = normalizeItem(item);
+
+      if (key && !uniqueItems.has(key)) {
+        uniqueItems.set(key, item);
+      }
+    });
+
+    itemSelect.innerHTML =
+      '<option value="">Select a medical item</option>';
+
+    [...uniqueItems.values()].sort().forEach((item) => {
+      const option = document.createElement("option");
+      option.value = item;
+      option.textContent = item;
+      itemSelect.appendChild(option);
+    });
+
+    if ([...uniqueItems.values()].includes(previousItem)) {
+      itemSelect.value = previousItem;
+    }
+
+    itemSelect.disabled = uniqueItems.size === 0;
+
+    if (uniqueItems.size === 0) {
+      itemSelect.innerHTML =
+        '<option value="">No inventory items found</option>';
+    }
+  }
+}
+
 function renderInventory() {
   const body = $("inventoryBody");
 
@@ -91,6 +155,7 @@ function renderInventory() {
       body.innerHTML = inventory.map((entry) => {
         const stock = Number(entry.stock) || 0;
         const surplus = getSurplus(entry);
+
         const status = surplus > 0
           ? '<span class="badge good">Available</span>'
           : '<span class="badge warning">Reserve only</span>';
@@ -120,6 +185,7 @@ function renderInventory() {
       (sum, entry) => sum + getSurplus(entry),
       0
     );
+
     $("surplusCount").textContent = total.toLocaleString();
   }
 
@@ -167,12 +233,11 @@ async function loadInventory() {
   inventory = inventoryResult.data || [];
   hospitals = hospitalsResult.data || [];
 
+  populateRequestDropdowns();
   renderInventory();
 }
 
 async function loadRequests() {
-  // Order by id instead of created_at because created_at
-  // is not one of the request columns you listed.
   const { data, error } = await supabaseClient
     .from("requests")
     .select("*")
@@ -204,44 +269,57 @@ if ($("showRequestForm") && $("requestForm")) {
   });
 }
 
-// Save supply request
+// Save a request using only registered hospitals and inventory items.
 if ($("requestForm")) {
   $("requestForm").addEventListener("submit", async (event) => {
     event.preventDefault();
 
-    const enteredHospital = $("hospitalInput").value.trim();
-    const item = $("itemInput").value.trim();
+    const selectedHospital = $("hospitalInput").value;
+    const selectedItem = $("itemInput").value;
     const quantity = Number($("quantityInput").value);
 
-    if (!enteredHospital || !item ||
-        !Number.isFinite(quantity) || quantity <= 0) {
-      alert("Please enter a hospital, item and valid quantity.");
+    if (
+      !selectedHospital ||
+      !selectedItem ||
+      !Number.isSafeInteger(quantity) ||
+      quantity <= 0
+    ) {
+      alert("Please select a hospital, select an item and enter a valid quantity.");
+      return;
+    }
+
+    // Validate selections against the records currently loaded from Supabase.
+    const hospitalName = resolveHospitalName(selectedHospital);
+
+    if (!hospitalName) {
+      alert("Invalid hospital. Please select a registered hospital.");
+      return;
+    }
+
+    const validItem = inventory.some(
+      (entry) => entry.item === selectedItem
+    );
+
+    if (!validItem) {
+      alert("Invalid medical item. Please select an inventory item.");
       return;
     }
 
     const button = $("requestForm").querySelector(
-      'button[type="submit"], button:not([type])'
+      'button[type="submit"]'
     );
 
-    if (button) button.disabled = true;
+    if (button) {
+      button.disabled = true;
+      button.textContent = "Submitting...";
+    }
 
     try {
-      // Match the typed hospital to the real hospital in the database.
-      const hospitalName = resolveHospitalName(enteredHospital);
-
-      if (!hospitalName) {
-        throw new Error(
-          `"${enteredHospital}" was not found in the hospitals table. ` +
-          "Please enter a registered hospital name."
-        );
-      }
-
-      // Only insert columns that you confirmed exist in requests.
       const { error } = await supabaseClient
         .from("requests")
         .insert([{
           hospital: hospitalName,
-          item: item,
+          item: selectedItem,
           quantity: quantity
         }]);
 
@@ -261,7 +339,10 @@ if ($("requestForm")) {
       console.error("Request save error:", error);
       alert("Request save nahi hui: " + error.message);
     } finally {
-      if (button) button.disabled = false;
+      if (button) {
+        button.disabled = false;
+        button.textContent = "Submit Supply Request";
+      }
     }
   });
 }
@@ -311,6 +392,7 @@ async function getNeedNetAIAnalysis(
     `;
   } catch (error) {
     console.error("NeedNet AI error:", error);
+
     output.textContent =
       "AI analysis failed: " + error.message +
       ". Check that your Gemini server is running on port 3000 " +
